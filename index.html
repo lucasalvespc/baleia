@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Baleia Financeiro</title>
 <meta name="description" content="Despesas, comprovantes e relatórios em PDF.">
-<meta name="theme-color" content="#0E3B57">
+<meta name="theme-color" content="#0F4C5C">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Baleia">
@@ -19,7 +19,7 @@
 :root{
   --bg:#F1F5F7; --surface:#FFFFFF; --sunk:#E4EBEF; --line:#D2DDE3;
   --ink:#0F2230; --muted:#5A6E7B; --accent:#13557A; --accent-ink:#FFFFFF; --accent-soft:#DCEAF2;
-  --deep:#0E3B57; --deep-ink:#FFFFFF; --deep-muted:#9EC3D8; --deep-line:#2D5874;
+  --deep:#0F4C5C; --deep-ink:#FFFFFF; --deep-muted:#A6D4D8; --deep-line:#3A7684;
   --warn:#9A5B00; --warn-soft:#FBEED8; --bad:#A3302A; --bad-soft:#F8E1DE;
   --c-alim:#C2603A; --c-trans:#2F5F9A; --c-comp:#7A4E9C; --c-contas:#13756B; --c-outras:#6B7378;
   --f-body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
@@ -31,7 +31,7 @@
 @media (prefers-color-scheme: dark){:root{
   --bg:#0C161D; --surface:#132029; --sunk:#1B2B36; --line:#2A3B47;
   --ink:#E3ECF1; --muted:#93A6B2; --accent:#6FB8E0; --accent-ink:#071822; --accent-soft:#173246;
-  --deep:#0E3B57; --deep-ink:#FFFFFF; --deep-muted:#9EC3D8; --deep-line:#2D5874;
+  --deep:#0F4C5C; --deep-ink:#FFFFFF; --deep-muted:#A6D4D8; --deep-line:#3A7684;
   --warn:#E7B067; --warn-soft:#3A2D18; --bad:#EF8C84; --bad-soft:#3D2120;
   --c-alim:#E39B76; --c-trans:#82ACE0; --c-comp:#BE98DB; --c-contas:#6CC9BC; --c-outras:#A5ADB2;
   color-scheme:dark}}
@@ -82,8 +82,8 @@ section{margin-top:24px;display:grid;gap:10px}
 
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;min-height:46px;padding:10px 14px;font-weight:700;color:var(--ink)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.btn.light{background:#FFFFFF;border-color:#FFFFFF;color:#0E3B57}
-.btn.ghost{background:transparent;border-color:#4C7894;color:#FFFFFF}
+.btn.light{background:#FFFFFF;border-color:#FFFFFF;color:var(--deep)}
+.btn.ghost{background:transparent;border-color:#66A8B2;color:#FFFFFF}
 .btn.danger{color:var(--bad);border-color:var(--bad)}
 .btn.danger.solid{background:var(--bad);color:var(--surface)}
 .btn:disabled{opacity:.5}

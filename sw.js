@@ -1,5 +1,5 @@
 // Guarda o app no aparelho para abrir sem internet.
-const CACHE = 'baleia-v1';
+const CACHE = 'baleia-v2';
 const ARQUIVOS = ['./', './index.html', './pdf-lib.min.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
