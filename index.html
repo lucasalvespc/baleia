@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Baleia Financeiro</title>
+<meta name="description" content="Despesas, comprovantes e relatórios em PDF.">
+<meta name="theme-color" content="#0E3B57">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Baleia">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+/* Layout: app de uma coluna, abas fixas embaixo, folhas que sobem da base */
+:root{
+  --bg:#F1F5F7; --surface:#FFFFFF; --sunk:#E4EBEF; --line:#D2DDE3;
+  --ink:#0F2230; --muted:#5A6E7B; --accent:#13557A; --accent-ink:#FFFFFF; --accent-soft:#DCEAF2;
+  --deep:#0E3B57; --deep-ink:#FFFFFF; --deep-muted:#9EC3D8; --deep-line:#2D5874;
+  --warn:#9A5B00; --warn-soft:#FBEED8; --bad:#A3302A; --bad-soft:#F8E1DE;
+  --c-alim:#C2603A; --c-trans:#2F5F9A; --c-comp:#7A4E9C; --c-contas:#13756B; --c-outras:#6B7378;
+  --f-body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-num:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r:12px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0C161D; --surface:#132029; --sunk:#1B2B36; --line:#2A3B47;
+  --ink:#E3ECF1; --muted:#93A6B2; --accent:#6FB8E0; --accent-ink:#071822; --accent-soft:#173246;
+  --deep:#0E3B57; --deep-ink:#FFFFFF; --deep-muted:#9EC3D8; --deep-line:#2D5874;
+  --warn:#E7B067; --warn-soft:#3A2D18; --bad:#EF8C84; --bad-soft:#3D2120;
+  --c-alim:#E39B76; --c-trans:#82ACE0; --c-comp:#BE98DB; --c-contas:#6CC9BC; --c-outras:#A5ADB2;
+  color-scheme:dark}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+[hidden]{display:none!important}
+img{max-width:100%}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:680px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(110px + env(safe-area-inset-bottom,0px))}
+h1,h2{font-family:var(--f-display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:1.6rem;font-weight:800}
+h2{font-size:1.15rem;font-weight:700}
+.muted{color:var(--muted)}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.eyebrow{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.iconbtn{background:var(--sunk);border:0;border-radius:50%;width:38px;height:38px;display:grid;place-items:center;color:var(--ink)}
+.iconbtn svg{width:20px;height:20px}
+
+.ledger{background:var(--deep);color:var(--deep-ink);border-radius:16px;padding:18px;display:grid;gap:14px}
+.ledger .eyebrow{color:var(--deep-muted)}
+.ledger .big{font-family:var(--f-num);font-size:2rem;font-variant-numeric:tabular-nums;font-weight:600;line-height:1.1;overflow-wrap:anywhere}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;border-top:1px solid var(--deep-line);padding-top:12px}
+.stats .v{font-family:var(--f-num);font-size:.95rem;overflow-wrap:anywhere}
+section{margin-top:24px;display:grid;gap:10px}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.linkbtn{background:none;border:0;color:var(--accent);font-weight:700;padding:6px 0;font-size:.95rem}
+
+.list{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.item{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border:0;border-top:1px solid var(--line);background:none;text-align:left;width:100%}
+.item:first-child{border-top:0}
+.item:active{background:var(--sunk)}
+.d{display:grid;justify-items:center;line-height:1.05;border-right:1px solid var(--line);padding-right:10px}
+.d b{font-family:var(--f-num);font-size:1.15rem}
+.d span{font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.t{min-width:0}
+.t strong{display:block;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.cat{display:inline-flex;align-items:center;gap:5px}
+.cat::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--cc,var(--c-outras))}
+.item .v{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap;font-size:.92rem}
+.flag{font-size:.7rem;padding:1px 6px;border-radius:4px;background:var(--warn-soft);color:var(--warn)}
+.empty{padding:28px 18px;text-align:center;color:var(--muted);display:grid;gap:10px;justify-items:center}
+.empty strong{color:var(--ink);font-size:1.05rem}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;min-height:46px;padding:10px 14px;font-weight:700;color:var(--ink)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.light{background:#FFFFFF;border-color:#FFFFFF;color:#0E3B57}
+.btn.ghost{background:transparent;border-color:#4C7894;color:#FFFFFF}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.danger.solid{background:var(--bad);color:var(--surface)}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row > .btn,.row > .pick{flex:1 1 90px}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:1fr 1fr auto 1fr 1fr;align-items:center;z-index:5}
+.tab{background:none;border:0;padding:6px 2px;font-size:.72rem;color:var(--muted);display:grid;justify-items:center;gap:2px}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent);font-weight:700}
+.fab{width:56px;height:56px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;margin:-24px 6px 0;box-shadow:0 4px 14px rgb(0 0 0 / .2)}
+.fab svg{width:28px;height:28px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px}
+label.f{display:grid;gap:5px;font-size:.82rem;color:var(--muted);font-weight:600;min-width:0}
+.f input,.f select{width:100%;min-width:0;min-height:46px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:16px;-webkit-appearance:none;appearance:none}
+.f input[type="date"],.f input[type="month"]{display:block}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.full{grid-column:1/-1}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:8px 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;gap:6px;font-size:.9rem;color:var(--ink)}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700}
+.chip i{width:8px;height:8px;border-radius:2px;background:var(--cc)}
+.seg{display:flex;background:var(--sunk);border-radius:10px;padding:3px}
+.seg button{flex:1;border:0;background:none;padding:9px 4px;border-radius:8px;color:var(--muted);font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink)}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper strong{flex:1;text-align:center;font-size:1.05rem}
+.stepper button{width:46px;height:46px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:1.3rem;color:var(--ink)}
+.totalbar{display:flex;justify-content:space-between;gap:12px;font-size:.92rem;padding:0 2px}
+.notice{border-radius:var(--r);padding:12px 14px;font-size:.92rem;display:grid;gap:8px;border:1px solid}
+.notice.warn{background:var(--warn-soft);border-color:var(--warn)}
+.notice.bad{background:var(--bad-soft);border-color:var(--bad)}
+.notice.ok{background:var(--accent-soft);border-color:var(--accent)}
+.notice ul{margin:0;padding-left:18px}
+.progress{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+
+.scrim{position:fixed;inset:0;background:rgb(0 0 0 / .45);z-index:10;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:640px;max-height:94%;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:16px 16px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px));display:grid;gap:14px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.drop{border:1.5px dashed var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px;background:var(--surface)}
+.drop.has{border-style:solid;border-color:var(--accent)}
+.pick{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
+.pick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:100px}
+.thumb{width:100%;max-height:240px;object-fit:contain;border-radius:8px;background:var(--sunk)}
+.money{font-family:var(--f-num)!important;font-size:1.1rem!important}
+.err{color:var(--bad);font-size:.9rem}
+.viewer{background:var(--sunk);border-radius:var(--r);padding:10px;display:grid;justify-items:center;gap:8px}
+.viewer img{max-height:60vh;border-radius:6px}
+dl.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 14px;margin:0}
+dl.kv dt{color:var(--muted);font-size:.88rem}
+dl.kv dd{margin:0;min-width:0;overflow-wrap:anywhere;text-align:right}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:20;font-size:.92rem;max-width:calc(100% - 32px);text-align:center}
+.install{background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--r);padding:12px 14px;display:grid;gap:6px;font-size:.92rem;margin-bottom:14px}
+.install b{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Baleia Financeiro</h1>
+    <button class="iconbtn" id="btn-menu" aria-label="Backup e ajuda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/></svg></button>
+  </header>
+
+  <div class="install" id="dica-instalar" hidden>
+    <b>Instale na tela de início</b>
+    <span>No Safari, toque em <b>Compartilhar</b> (o quadrado com a seta para cima) e depois em <b>Adicionar à Tela de Início</b>. Assim o app abre em tela cheia e seus dados ficam mais protegidos.</span>
+    <button class="linkbtn" id="fechar-dica" style="justify-self:start">Entendi</button>
+  </div>
+  <div id="status" class="notice bad" hidden style="margin-bottom:14px"></div>
+
+  <!-- INÍCIO -->
+  <main id="v-inicio">
+    <div class="ledger">
+      <div><div class="eyebrow">Total registrado</div><div class="big" id="sum-total">R$ 0,00</div></div>
+      <div class="stats">
+        <div><div class="eyebrow">Despesas</div><div class="v" id="sum-qtd">0</div></div>
+        <div><div class="eyebrow">Comprovantes</div><div class="v" id="sum-comp">0</div></div>
+        <div><div class="eyebrow" id="sum-mes-label">Este mês</div><div class="v" id="sum-mes">R$ 0,00</div></div>
+      </div>
+      <div class="row">
+        <button class="btn light" data-nova>Nova despesa</button>
+        <button class="btn ghost" data-go="relatorio">Gerar PDF</button>
+      </div>
+    </div>
+    <section>
+      <div class="sec-head"><h2>Recentes</h2><button class="linkbtn" data-go="historico">Ver histórico</button></div>
+      <div class="list" id="recentes"><div class="empty">Carregando…</div></div>
+    </section>
+  </main>
+
+  <!-- HISTÓRICO -->
+  <main id="v-historico" hidden>
+    <h2 style="margin-bottom:12px">Histórico</h2>
+    <div class="card">
+      <label class="f">Pesquisar descrição<input id="h-busca" type="search" placeholder="Ex.: material, aluguel" autocomplete="off"></label>
+      <div class="grid2">
+        <label class="f">De<input id="h-de" type="date"></label>
+        <label class="f">Até<input id="h-ate" type="date"></label>
+      </div>
+      <div class="chips" id="h-cats"></div>
+    </div>
+    <div class="totalbar" style="margin-top:12px">
+      <button class="linkbtn" id="h-ordem" data-desc="1">Mais recentes primeiro ↓</button>
+      <span class="num" id="h-total">R$ 0,00</span>
+    </div>
+    <div class="muted" id="h-count" style="font-size:.85rem;margin:2px 2px 8px">0 despesas</div>
+    <div class="list" id="h-lista"></div>
+  </main>
+
+  <!-- RELATÓRIO -->
+  <main id="v-relatorio" hidden>
+    <h2>Gerar PDF</h2>
+    <p class="muted" style="margin:6px 0 14px">O PDF traz uma capa com o resumo e, depois, cada comprovante na ordem da data de pagamento, da mais antiga para a mais recente.</p>
+    <div style="display:grid;gap:12px">
+      <div class="seg" id="r-modo">
+        <button data-modo="todos" aria-pressed="true">Todos</button>
+        <button data-modo="mes" aria-pressed="false">Um mês</button>
+        <button data-modo="periodo" aria-pressed="false">Período</button>
+      </div>
+      <div class="stepper" id="r-mes-box" hidden>
+        <button id="r-mes-ant" aria-label="Mês anterior">‹</button>
+        <strong id="r-mes-nome"></strong>
+        <button id="r-mes-prox" aria-label="Próximo mês">›</button>
+      </div>
+      <div class="grid2" id="r-periodo-box" hidden>
+        <label class="f">De<input id="r-de" type="date"></label>
+        <label class="f">Até<input id="r-ate" type="date"></label>
+      </div>
+      <div style="display:grid;gap:6px"><span class="eyebrow">Categoria</span><div class="chips" id="r-cats"></div></div>
+      <div class="card" id="r-preview"></div>
+      <div id="r-msg" style="display:grid;gap:10px"></div>
+      <button class="btn primary" id="r-gerar">Gerar PDF</button>
+    </div>
+  </main>
+</div>
+
+<nav class="tabs" aria-label="Navegação">
+  <button class="tab" data-go="inicio" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Início</button>
+  <button class="tab" data-go="historico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Histórico</button>
+  <button class="fab" data-nova aria-label="Nova despesa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button class="tab" data-go="relatorio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg>Relatório</button>
+  <button class="tab" id="tab-backup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Backup</button>
+</nav>
+
+<div id="modal-root"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="pdf-lib.min.js"></script>
+<script>
+(() => {
+"use strict";
+const CATS = [
+  {id:"alimentacao", nome:"Alimentação", cor:"--c-alim"},
+  {id:"transporte", nome:"Transporte", cor:"--c-trans"},
+  {id:"compras", nome:"Compras", cor:"--c-comp"},
+  {id:"contas", nome:"Contas", cor:"--c-contas"},
+  {id:"outras", nome:"Outras", cor:"--c-outras"},
+];
+const catById = id => CATS.find(c => c.id === id) || CATS[4];
+const MESES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const MESES_LONGO = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const pad = n => String(n).padStart(2,"0");
+function fmtValor(c){ c = Math.round(c||0); const neg = c < 0; c = Math.abs(c); return `${neg?"-":""}R$ ${String(Math.floor(c/100)).replace(/\B(?=(\d{3})+(?!\d))/g,".")},${pad(c%100)}`; }
+const fmtData = s => { const [y,m,d] = s.split("-"); return `${d}/${m}/${y}`; };
+const toISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const hojeISO = () => toISO(new Date());
+const nomeMes = (a,m) => { const n = MESES_LONGO[m-1]; return `${n[0].toUpperCase()}${n.slice(1)} de ${a}`; };
+const plural = (n,um,varios) => `${n} ${n===1?um:varios}`;
+const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+const cronologica = (a,b) => a.data.localeCompare(b.data) || a.criadoEm.localeCompare(b.criadoEm) || a.id.localeCompare(b.id);
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const MAX_BYTES = 20*1024*1024;
+const fmtTam = b => b < 1024*1024 ? `${Math.max(1, Math.round(b/1024))} KB` : `${(b/1024/1024).toFixed(1).replace(".",",")} MB`;
+
+/* ---------- Armazenamento no aparelho (IndexedDB) ---------- */
+let dbp = null;
+function abrirDB(){
+  if (!dbp) dbp = new Promise((res, rej) => {
+    const r = indexedDB.open("baleia-financeiro", 1);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if (!db.objectStoreNames.contains("despesas")) db.createObjectStore("despesas", {keyPath:"id"});
+      if (!db.objectStoreNames.contains("arquivos")) db.createObjectStore("arquivos");
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => { dbp = null; rej(r.error); };
+  });
+  return dbp;
+}
+async function tx(stores, modo, fn){
+  const db = await abrirDB();
+  return new Promise((res, rej) => {
+    const t = db.transaction(stores, modo);
+    let out;
+    Promise.resolve(fn(t)).then(v => { out = v; }).catch(rej);
+    t.oncomplete = () => res(out);
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error || new Error("abortado"));
+  });
+}
+const req = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+const DB = {
+  listar: () => tx(["despesas"], "readonly", t => req(t.objectStore("despesas").getAll())),
+  salvar: (d, blob, apagarArq) => tx(["despesas","arquivos"], "readwrite", t => {
+    t.objectStore("despesas").put(d);
+    if (blob) t.objectStore("arquivos").put(blob, d.arquivo);
+    if (apagarArq) t.objectStore("arquivos").delete(apagarArq);
+  }),
+  excluir: d => tx(["despesas","arquivos"], "readwrite", t => {
+    t.objectStore("despesas").delete(d.id);
+    if (d.arquivo) t.objectStore("arquivos").delete(d.arquivo);
+  }),
+  arquivo: chave => tx(["arquivos"], "readonly", t => req(t.objectStore("arquivos").get(chave))),
+  limparTudo: () => tx(["despesas","arquivos"], "readwrite", t => { t.objectStore("despesas").clear(); t.objectStore("arquivos").clear(); }),
+};
+
+let despesas = [];
+let carregado = false;
+async function recarregar(){
+  try { despesas = (await DB.listar()).filter(d => d && typeof d.data === "string"); status(""); }
+  catch(e){ status("Não foi possível abrir os dados do app. Feche e abra de novo. Se estiver numa aba anônima do Safari, use uma aba normal."); }
+  carregado = true; render();
+}
+
+/* ---------- Navegação e avisos ---------- */
+function go(view){
+  for (const v of ["inicio","historico","relatorio"]) $("#v-"+v).hidden = v !== view;
+  document.querySelectorAll(".tab[data-go]").forEach(t => t.dataset.go === view ? t.setAttribute("aria-current","page") : t.removeAttribute("aria-current"));
+  window.scrollTo(0,0);
+  if (view === "relatorio") renderPreview();
+}
+document.addEventListener("click", e => {
+  const g = e.target.closest("[data-go]"); if (g) go(g.dataset.go);
+  if (e.target.closest("[data-nova]")) abrirForm();
+  const it = e.target.closest(".item[data-id]"); if (it) abrirDetalhe(it.dataset.id);
+});
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2800); }
+function status(msg){ const s = $("#status"); s.textContent = msg || ""; s.hidden = !msg; }
+
+/* ---------- Chips de categoria ---------- */
+function chips(el, valor, comTodas, onChange){
+  const ops = comTodas ? [{id:"", nome:"Todas"}, ...CATS] : CATS;
+  el.innerHTML = ops.map(c => `<button type="button" class="chip" data-cat="${c.id}" aria-pressed="${c.id === valor}">${c.id ? `<i style="--cc:var(${c.cor})"></i>` : ""}${c.nome}</button>`).join("");
+  el.onclick = e => {
+    const b = e.target.closest("[data-cat]"); if (!b) return;
+    el.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === b));
+    onChange(b.dataset.cat);
+  };
+}
+
+/* ---------- Renderização ---------- */
+function itemHTML(d){
+  const [y,m,dd] = d.data.split("-"); const c = catById(d.categoria);
+  return `<button class="item" data-id="${esc(d.id)}">
+    <span class="d"><b>${dd}</b><span>${MESES[+m-1]} ${y.slice(2)}</span></span>
+    <span class="t"><strong>${esc(d.descricao)}</strong><span class="meta"><span class="cat" style="--cc:var(${c.cor})">${c.nome}</span>${d.arquivo ? "" : `<span class="flag">sem comprovante</span>`}</span></span>
+    <span class="v">${fmtValor(d.valorCentavos)}</span></button>`;
+}
+const vazio = (t, x, botao) => `<div class="empty"><strong>${t}</strong><span>${x}</span>${botao ? `<button class="btn primary" data-nova>Cadastrar despesa</button>` : ""}</div>`;
+function render(){
+  const mes = hojeISO().slice(0,7);
+  $("#sum-total").textContent = fmtValor(despesas.reduce((s,d) => s + d.valorCentavos, 0));
+  $("#sum-qtd").textContent = despesas.length;
+  $("#sum-comp").textContent = despesas.filter(d => d.arquivo).length;
+  $("#sum-mes-label").textContent = MESES_LONGO[new Date().getMonth()];
+  $("#sum-mes").textContent = fmtValor(despesas.filter(d => d.data.startsWith(mes)).reduce((s,d) => s + d.valorCentavos, 0));
+  const rec = [...despesas].sort((a,b) => -cronologica(a,b)).slice(0,5);
+  $("#recentes").innerHTML = !carregado ? `<div class="empty">Carregando…</div>`
+    : rec.length ? rec.map(itemHTML).join("")
+    : vazio("Nenhuma despesa ainda", "Cadastre a primeira com data, valor e a foto ou PDF do comprovante.", true);
+  renderHistorico();
+  if (!$("#v-relatorio").hidden) renderPreview();
+}
+function filtrar({de, ate, cat, busca}){
+  const q = (busca||"").trim().toLowerCase();
+  return despesas.filter(d => (!de || d.data >= de) && (!ate || d.data <= ate) && (!cat || d.categoria === cat) && (!q || d.descricao.toLowerCase().includes(q)));
+}
+let hCat = "";
+chips($("#h-cats"), "", true, v => { hCat = v; renderHistorico(); });
+function renderHistorico(){
+  const l = filtrar({de:$("#h-de").value, ate:$("#h-ate").value, cat:hCat, busca:$("#h-busca").value}).sort(cronologica);
+  if ($("#h-ordem").dataset.desc === "1") l.reverse();
+  $("#h-count").textContent = plural(l.length, "despesa", "despesas");
+  $("#h-total").textContent = fmtValor(l.reduce((s,d) => s + d.valorCentavos, 0));
+  $("#h-lista").innerHTML = l.length ? l.map(itemHTML).join("")
+    : despesas.length ? vazio("Nada neste filtro", "Ajuste o período, a categoria ou a pesquisa.", false)
+    : vazio("Nenhuma despesa ainda", "As despesas cadastradas aparecem aqui.", true);
+}
+["#h-de","#h-ate","#h-busca"].forEach(s => $(s).addEventListener("input", renderHistorico));
+$("#h-ordem").addEventListener("click", e => {
+  const b = e.currentTarget; const desc = b.dataset.desc !== "1";
+  b.dataset.desc = desc ? "1" : "0"; b.textContent = desc ? "Mais recentes primeiro ↓" : "Mais antigas primeiro ↑";
+  renderHistorico();
+});
+
+/* ---------- Folha modal ---------- */
+function modal(html){
+  const root = $("#modal-root");
+  root.innerHTML = `<div class="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  const scrim = root.firstElementChild;
+  scrim.addEventListener("click", e => { if (e.target === scrim) fechar(); });
+  scrim.querySelectorAll("[data-fechar]").forEach(b => b.addEventListener("click", fechar));
+  document.body.style.overflow = "hidden";
+  return scrim.firstElementChild;
+}
+function fechar(){ $("#modal-root").innerHTML = ""; document.body.style.overflow = ""; urlsTemp.forEach(u => URL.revokeObjectURL(u)); urlsTemp = []; }
+let urlsTemp = [];
+const urlDe = blob => { const u = URL.createObjectURL(blob); urlsTemp.push(u); return u; };
+const BTN_X = `<button class="iconbtn" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`;
+
+/* ---------- Preparo dos comprovantes ---------- */
+async function decodificar(file){
+  if (typeof createImageBitmap === "function"){
+    try { return await createImageBitmap(file, {imageOrientation:"from-image"}); } catch {}
+    try { return await createImageBitmap(file); } catch {}
+  }
+  return new Promise(res => {
+    const u = URL.createObjectURL(file); const im = new Image();
+    im.onload = () => { URL.revokeObjectURL(u); res(im); };
+    im.onerror = () => { URL.revokeObjectURL(u); res(null); };
+    im.src = u;
+  });
+}
+async function prepararArquivo(file){
+  if (file.size > MAX_BYTES) throw new Error("O arquivo passa de 20 MB. Envie uma versão menor.");
+  const ehPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+  if (ehPdf){
+    const buf = await file.arrayBuffer();
+    let doc;
+    try { doc = await PDFLib.PDFDocument.load(buf); }
+    catch(err){
+      if (/encrypt/i.test(String(err && err.message))) throw new Error("Este PDF está protegido por senha. Salve uma cópia sem senha no app do banco e envie de novo.");
+      throw new Error("Não foi possível ler este PDF. Ele pode estar corrompido.");
+    }
+    return { blob: new Blob([buf], {type:"application/pdf"}), tipo:"application/pdf", paginas: doc.getPageCount(), nome: file.name || "comprovante.pdf" };
+  }
+  // Foto: corrige a orientação, reduz o tamanho e converte para JPG (também converte HEIC do iPhone)
+  const bmp = await decodificar(file);
+  if (bmp){
+    try {
+      const w0 = bmp.width || bmp.naturalWidth, h0 = bmp.height || bmp.naturalHeight, k = Math.min(1, 2200/Math.max(w0,h0));
+      const cv = document.createElement("canvas"); cv.width = Math.max(1, Math.round(w0*k)); cv.height = Math.max(1, Math.round(h0*k));
+      const ctx = cv.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0,0,cv.width,cv.height); ctx.drawImage(bmp,0,0,cv.width,cv.height);
+      const blob = await new Promise(r => { try { cv.toBlob(r, "image/jpeg", 0.85); } catch { r(null); } });
+      if (blob && blob.size > 0) return { blob, tipo:"image/jpeg", paginas:1, nome: (file.name || "foto").replace(/\.[^.]+$/,"") + ".jpg" };
+    } catch {}
+  }
+  const cab = new Uint8Array(await file.slice(0,8).arrayBuffer());
+  if (cab[0] === 0xFF && cab[1] === 0xD8) return { blob: new Blob([await file.arrayBuffer()], {type:"image/jpeg"}), tipo:"image/jpeg", paginas:1, nome: file.name || "foto.jpg" };
+  if (cab[0] === 0x89 && cab[1] === 0x50) return { blob: new Blob([await file.arrayBuffer()], {type:"image/png"}), tipo:"image/png", paginas:1, nome: file.name || "foto.png" };
+  throw new Error("Não foi possível abrir esta imagem. Tente outra foto ou uma captura de tela do comprovante.");
+}
+
+/* ---------- Cadastro e edição ---------- */
+function abrirForm(id){
+  const atual = id ? despesas.find(d => d.id === id) : null;
+  let centavos = atual ? atual.valorCentavos : 0, categoria = atual ? atual.categoria : "outras", novo = null;
+  const el = modal(`
+    <div class="sheet-head"><h2>${atual ? "Editar despesa" : "Nova despesa"}</h2>${BTN_X}</div>
+    <form id="frm" class="grid2" novalidate>
+      <label class="f">Data do pagamento<input id="fx-data" type="date" required value="${atual ? atual.data : hojeISO()}"></label>
+      <label class="f">Valor<input id="fx-valor" class="money" inputmode="numeric" autocomplete="off" value="${fmtValor(centavos)}"></label>
+      <label class="f full">Descrição<input id="fx-desc" maxlength="120" placeholder="Ex.: Pagamento de material" autocomplete="off" value="${atual ? esc(atual.descricao) : ""}"></label>
+      <div class="full" style="display:grid;gap:6px"><span class="eyebrow">Categoria</span><div class="chips" id="fx-cats"></div></div>
+      <div class="drop full ${atual && atual.arquivo ? "has" : ""}" id="fx-drop">
+        <strong id="fx-nome">${atual && atual.arquivo ? esc(atual.arquivoNome || "Comprovante anexado") : "Comprovante"}</strong>
+        <span class="muted" id="fx-info">${atual && atual.arquivo ? "Escolha outro arquivo para substituir" : "Foto ou PDF, até 20 MB"}</span>
+        <img id="fx-thumb" class="thumb" alt="Prévia do comprovante" hidden>
+        <div class="row">
+          <span class="btn pick">Câmera<input class="fx-file" type="file" accept="image/*" capture="environment" aria-label="Fotografar comprovante"></span>
+          <span class="btn pick">Fotos<input class="fx-file" type="file" accept="image/*" aria-label="Escolher foto"></span>
+          <span class="btn pick">PDF<input class="fx-file" type="file" accept="application/pdf,.pdf" aria-label="Escolher PDF"></span>
+        </div>
+      </div>
+      <div class="err full" id="fx-err" hidden></div>
+      <div class="row full"><button type="button" class="btn" data-fechar>Cancelar</button><button type="submit" class="btn primary" id="fx-salvar">Salvar despesa</button></div>
+    </form>`);
+  chips(el.querySelector("#fx-cats"), categoria, false, v => categoria = v);
+  const err = m => { const e = el.querySelector("#fx-err"); e.textContent = m || ""; e.hidden = !m; };
+  const vEl = el.querySelector("#fx-valor");
+  // Os dígitos sempre entram pela direita, como numa calculadora, onde quer que esteja o cursor.
+  const fimCursor = () => { try { vEl.setSelectionRange(vEl.value.length, vEl.value.length); } catch {} };
+  vEl.addEventListener("beforeinput", e => {
+    let s = String(centavos);
+    if (e.inputType && e.inputType.startsWith("delete")) s = s.slice(0,-1);
+    else if (e.data != null) s = (s === "0" ? "" : s) + e.data.replace(/\D/g,"");
+    else return;
+    e.preventDefault();
+    centavos = Math.min(parseInt(s || "0", 10) || 0, 99999999999); vEl.value = fmtValor(centavos); fimCursor();
+  });
+  vEl.addEventListener("input", () => {
+    const dig = vEl.value.replace(/\D/g,"").replace(/^0+/,"").slice(0,11);
+    centavos = dig ? parseInt(dig,10) : 0; vEl.value = fmtValor(centavos); fimCursor();
+  });
+  ["focus","click"].forEach(t => vEl.addEventListener(t, () => setTimeout(fimCursor, 0)));
+  el.querySelectorAll(".fx-file").forEach(inp => inp.addEventListener("change", async ev => {
+    const f = ev.target.files && ev.target.files[0]; if (!f) return;
+    err(""); el.querySelector("#fx-nome").textContent = f.name || "arquivo"; el.querySelector("#fx-info").textContent = "Verificando arquivo…";
+    try {
+      novo = await prepararArquivo(f);
+      el.querySelector("#fx-drop").classList.add("has");
+      el.querySelector("#fx-nome").textContent = novo.nome;
+      el.querySelector("#fx-info").textContent = novo.tipo === "application/pdf" ? `PDF com ${plural(novo.paginas,"página","páginas")}` : "Foto pronta para salvar";
+      const th = el.querySelector("#fx-thumb");
+      if (novo.tipo !== "application/pdf"){ th.src = urlDe(novo.blob); th.hidden = false; } else th.hidden = true;
+    } catch(e){
+      novo = null; el.querySelector("#fx-drop").classList.toggle("has", !!(atual && atual.arquivo));
+      el.querySelector("#fx-nome").textContent = "Comprovante"; el.querySelector("#fx-info").textContent = "Foto ou PDF, até 20 MB";
+      err(e.message);
+    } finally { ev.target.value = ""; }
+  }));
+  el.querySelector("#frm").addEventListener("submit", async ev => {
+    ev.preventDefault(); err("");
+    const data = el.querySelector("#fx-data").value, descricao = el.querySelector("#fx-desc").value.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return err("Informe a data do pagamento.");
+    if (centavos <= 0) return err("Informe um valor maior que zero.");
+    if (!descricao) return err("Escreva uma descrição para identificar a despesa.");
+    const btn = el.querySelector("#fx-salvar"); btn.disabled = true; btn.textContent = "Salvando…";
+    const agora = new Date().toISOString(), id = atual ? atual.id : novoId();
+    const chave = novo ? `${id}-${Date.now().toString(36)}` : null;
+    const d = {
+      id, data, valorCentavos: centavos, descricao: descricao.slice(0,120), categoria,
+      arquivo: chave || (atual ? atual.arquivo : null),
+      arquivoNome: novo ? novo.nome : atual ? atual.arquivoNome : null,
+      arquivoTipo: novo ? novo.tipo : atual ? atual.arquivoTipo : null,
+      paginas: novo ? novo.paginas : atual ? atual.paginas : 0,
+      criadoEm: atual ? atual.criadoEm : agora, atualizadoEm: agora,
+    };
+    try {
+      await DB.salvar(d, novo ? novo.blob : null, novo && atual && atual.arquivo ? atual.arquivo : null);
+      fechar(); toast(atual ? "Despesa atualizada" : "Despesa salva"); await recarregar();
+    } catch(e){
+      btn.disabled = false; btn.textContent = "Salvar despesa";
+      err(e && e.name === "QuotaExceededError" ? "O espaço do app no iPhone está cheio. Exclua comprovantes antigos ou libere espaço no aparelho." : "Não foi possível salvar. Tente de novo.");
+    }
+  });
+}
+
+/* ---------- Detalhe ---------- */
+async function abrirDetalhe(id){
+  const d = despesas.find(x => x.id === id); if (!d) return;
+  const c = catById(d.categoria);
+  const el = modal(`
+    <div class="sheet-head"><h2 style="flex:1;min-width:0;overflow-wrap:anywhere">${esc(d.descricao)}</h2>${BTN_X}</div>
+    <dl class="kv">
+      <dt>Data</dt><dd class="num">${fmtData(d.data)}</dd>
+      <dt>Valor</dt><dd class="num">${fmtValor(d.valorCentavos)}</dd>
+      <dt>Categoria</dt><dd><span class="cat" style="--cc:var(${c.cor})">${c.nome}</span></dd>
+      <dt>Cadastro</dt><dd class="muted">${new Date(d.criadoEm).toLocaleString("pt-BR")}</dd>
+    </dl>
+    <div id="dx-viewer"></div>
+    <div id="dx-conf"></div>
+    <div class="row"><button class="btn danger" id="dx-excluir">Excluir</button><button class="btn primary" id="dx-editar">Editar</button></div>`);
+  const v = el.querySelector("#dx-viewer");
+  if (!d.arquivo) v.innerHTML = `<div class="notice warn">Esta despesa não tem comprovante. Toque em Editar para anexar a foto ou o PDF.</div>`;
+  else {
+    const blob = await DB.arquivo(d.arquivo).catch(() => null);
+    if (!blob) v.innerHTML = `<div class="notice bad">O arquivo do comprovante não foi encontrado. Edite a despesa e anexe de novo.</div>`;
+    else if (d.arquivoTipo === "application/pdf"){
+      v.innerHTML = `<div class="viewer"><strong>${esc(d.arquivoNome || "comprovante.pdf")}</strong><span class="muted">PDF com ${plural(d.paginas||1,"página","páginas")}</span><button class="btn" id="dx-abrir" style="width:100%">Abrir ou compartilhar PDF</button></div>`;
+      v.querySelector("#dx-abrir").onclick = () => entregar(blob, d.arquivoNome || "comprovante.pdf");
+    } else v.innerHTML = `<div class="viewer"><img src="${urlDe(blob)}" alt="Comprovante: ${esc(d.descricao)}"></div>`;
+  }
+  el.querySelector("#dx-editar").onclick = () => abrirForm(d.id);
+  el.querySelector("#dx-excluir").onclick = () => {
+    const conf = el.querySelector("#dx-conf");
+    conf.innerHTML = `<div class="notice bad"><span>Excluir esta despesa e o comprovante? Não dá para desfazer.</span><div class="row"><button class="btn" id="dx-nao">Manter</button><button class="btn danger solid" id="dx-sim">Excluir</button></div></div>`;
+    conf.querySelector("#dx-nao").onclick = () => conf.innerHTML = "";
+    conf.querySelector("#dx-sim").onclick = async () => {
+      try { await DB.excluir(d); fechar(); toast("Despesa excluída"); await recarregar(); }
+      catch { conf.innerHTML = `<div class="err">Não foi possível excluir. Tente de novo.</div>`; }
+    };
+  };
+}
+
+/* ---------- Entregar um arquivo (menu Compartilhar do iPhone) ---------- */
+async function entregar(blob, nome){
+  const file = new File([blob], nome, {type: blob.type || "application/octet-stream"});
+  if (navigator.canShare && navigator.canShare({files:[file]})){
+    try { await navigator.share({files:[file], title:nome}); return; }
+    catch(e){ if (e && e.name === "AbortError") return; }
+  }
+  const u = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = u; a.download = nome; a.target = "_blank"; a.rel = "noopener";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 60000);
+}
+
+/* ---------- Relatório ---------- */
+const hoje = new Date();
+const R = { modo:"todos", ano: hoje.getFullYear(), mes: hoje.getMonth()+1, cat:"" };
+chips($("#r-cats"), "", true, v => { R.cat = v; renderPreview(); limparMsg(); });
+$("#r-modo").addEventListener("click", e => {
+  const b = e.target.closest("[data-modo]"); if (!b) return;
+  R.modo = b.dataset.modo;
+  $("#r-modo").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  $("#r-mes-box").hidden = R.modo !== "mes"; $("#r-periodo-box").hidden = R.modo !== "periodo";
+  renderPreview(); limparMsg();
+});
+const mudarMes = delta => { let m = R.mes + delta, a = R.ano; if (m < 1){ m = 12; a--; } if (m > 12){ m = 1; a++; } R.mes = m; R.ano = a; renderPreview(); limparMsg(); };
+$("#r-mes-ant").onclick = () => mudarMes(-1);
+$("#r-mes-prox").onclick = () => mudarMes(1);
+["#r-de","#r-ate"].forEach(s => $(s).addEventListener("input", () => { renderPreview(); limparMsg(); }));
+const limparMsg = () => { $("#r-msg").innerHTML = ""; };
+
+function filtrosRelatorio(){
+  let f = {cat:R.cat}, rotulo = "Todos os registros";
+  if (R.modo === "mes"){
+    const mm = pad(R.mes); f.de = `${R.ano}-${mm}-01`; f.ate = `${R.ano}-${mm}-${pad(new Date(R.ano, R.mes, 0).getDate())}`; rotulo = nomeMes(R.ano, R.mes);
+  } else if (R.modo === "periodo"){
+    f.de = $("#r-de").value; f.ate = $("#r-ate").value;
+    rotulo = f.de && f.ate ? `${fmtData(f.de)} a ${fmtData(f.ate)}` : f.de ? `A partir de ${fmtData(f.de)}` : f.ate ? `Até ${fmtData(f.ate)}` : "Todos os registros";
+  }
+  const lista = filtrar(f).sort(cronologica);
+  if (R.modo === "todos" && lista.length) rotulo = `${fmtData(lista[0].data)} a ${fmtData(lista[lista.length-1].data)}`;
+  return {lista, rotulo};
+}
+function renderPreview(){
+  $("#r-mes-nome").textContent = nomeMes(R.ano, R.mes);
+  const {lista, rotulo} = filtrosRelatorio();
+  const sem = lista.filter(d => !d.arquivo).length;
+  const pags = lista.reduce((s,d) => s + (d.arquivo ? (d.paginas||1) : 1), 0);
+  $("#r-preview").innerHTML = `<span class="eyebrow">Prévia</span>
+    <div class="sec-head" style="flex-wrap:wrap"><strong>${esc(rotulo)}${R.cat ? " · " + catById(R.cat).nome : ""}</strong><span class="num">${fmtValor(lista.reduce((s,d)=>s+d.valorCentavos,0))}</span></div>
+    <span class="muted">${plural(lista.length,"despesa","despesas")} · cerca de ${plural(pags,"página","páginas")} de comprovantes${sem ? ` · ${sem} sem comprovante` : ""}</span>`;
+  $("#r-gerar").disabled = !lista.length;
+}
+
+let ultimoPdf = null;
+$("#r-gerar").addEventListener("click", () => gerar(false));
+async function gerar(aceitarPendentes){
+  const {lista, rotulo} = filtrosRelatorio(); if (!lista.length) return;
+  const msg = $("#r-msg"), btn = $("#r-gerar");
+  btn.disabled = true; btn.textContent = "Gerando…";
+  msg.innerHTML = `<div class="card"><span id="r-etapa">Lendo comprovantes…</span><div class="progress"><i id="r-bar"></i></div></div>`;
+  const bar = () => $("#r-bar");
+  try {
+    const arquivos = new Map(), falhas = [];
+    for (let i = 0; i < lista.length; i++){
+      const d = lista[i];
+      if (d.arquivo){
+        try {
+          const blob = await DB.arquivo(d.arquivo); if (!blob) throw 0;
+          const buf = await blob.arrayBuffer();
+          if (d.arquivoTipo === "application/pdf") arquivos.set(d.id, {tipo:"pdf", src: await PDFLib.PDFDocument.load(buf)});
+          else arquivos.set(d.id, {tipo:"img", buf, mime:d.arquivoTipo});
+        } catch { falhas.push(d); }
+      }
+      bar().style.width = ((i+1)/lista.length*50) + "%";
+    }
+    if (falhas.length && !aceitarPendentes){
+      msg.innerHTML = `<div class="notice bad"><strong>${falhas.length === 1 ? "1 comprovante não pôde ser lido" : `${falhas.length} comprovantes não puderam ser lidos`}</strong>
+        <ul>${falhas.map(d => `<li>${fmtData(d.data)} · ${esc(d.descricao)} · ${fmtValor(d.valorCentavos)}</li>`).join("")}</ul>
+        <span>Substitua o arquivo dessas despesas ou gere o PDF com uma página de aviso no lugar de cada um.</span>
+        <div class="row"><button class="btn" id="r-tentar">Tentar de novo</button><button class="btn danger" id="r-pend">Gerar com avisos</button></div></div>`;
+      $("#r-tentar").onclick = () => gerar(false); $("#r-pend").onclick = () => gerar(true);
+      return;
+    }
+    $("#r-etapa").textContent = "Montando o PDF…";
+    const bytes = await montarPdf(lista, arquivos, falhas, rotulo, R.cat, p => bar().style.width = (50 + p*50) + "%");
+    ultimoPdf = { blob: new Blob([bytes], {type:"application/pdf"}), nome: `Baleia Financeiro ${rotulo}${R.cat ? " " + catById(R.cat).nome : ""}.pdf`.replace(/[\/\\:*?"<>|]/g,"-") };
+    const sem = lista.filter(d => !d.arquivo).length, avisos = [];
+    if (sem) avisos.push(`${plural(sem,"despesa está","despesas estão")} sem comprovante e ${sem === 1 ? "aparece marcada" : "aparecem marcadas"} no PDF.`);
+    if (falhas.length) avisos.push(`${plural(falhas.length,"comprovante indisponível foi substituído","comprovantes indisponíveis foram substituídos")} por uma página de aviso. A capa indica que o relatório está incompleto.`);
+    msg.innerHTML = `<div class="notice ${avisos.length ? "warn" : "ok"}"><strong>PDF pronto · ${fmtTam(ultimoPdf.blob.size)}</strong>${avisos.map(a => `<span>${a}</span>`).join("")}
+      <button class="btn primary" id="r-baixar">Salvar ou compartilhar PDF</button></div>`;
+    $("#r-baixar").onclick = () => entregar(ultimoPdf.blob, ultimoPdf.nome);
+  } catch(e){
+    msg.innerHTML = `<div class="notice bad">Não foi possível montar o PDF. ${esc(e && e.message || "")}</div>`;
+  } finally { btn.disabled = false; btn.textContent = "Gerar PDF"; }
+}
+
+async function montarPdf(lista, arquivos, falhas, rotulo, cat, onProg){
+  const { PDFDocument, StandardFonts, rgb, degrees } = PDFLib;
+  const pdf = await PDFDocument.create();
+  pdf.setTitle(`Relatório de comprovantes - ${rotulo}`); pdf.setCreator("Baleia Financeiro"); pdf.setProducer("Baleia Financeiro");
+  const F = await pdf.embedFont(StandardFonts.Helvetica), FB = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const W = 595.28, H = 841.89, M = 40;
+  const INK = rgb(.06,.13,.19), MUT = rgb(.35,.43,.48), LINE = rgb(.82,.87,.89), ACC = rgb(.075,.333,.478), BAND = rgb(.945,.961,.969), WARN = rgb(.6,.36,0);
+  const falhou = new Set(falhas.map(d => d.id));
+  const cache = new Map();
+  const limpa = s => {
+    s = String(s ?? "").replace(/[  ]/g," ").replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/…/g,"...");
+    let o = ""; for (const ch of s){ if (!cache.has(ch)){ try { F.widthOfTextAtSize(ch,10); FB.widthOfTextAtSize(ch,10); cache.set(ch,true); } catch { cache.set(ch,false); } } o += cache.get(ch) ? ch : "?"; }
+    return o;
+  };
+  const corta = (s, font, size, max) => { s = limpa(s); if (font.widthOfTextAtSize(s,size) <= max) return s; while (s.length > 1 && font.widthOfTextAtSize(s+"...",size) > max) s = s.slice(0,-1); return s + "..."; };
+  const txt = (p, s, x, y, size, font=F, color=INK) => p.drawText(limpa(s), {x, y, size, font, color});
+  const txtR = (p, s, xr, y, size, font=F, color=INK) => { s = limpa(s); p.drawText(s, {x: xr - font.widthOfTextAtSize(s,size), y, size, font, color}); };
+
+  const total = lista.reduce((s,d) => s + d.valorCentavos, 0);
+  const pagsItem = d => { const a = arquivos.get(d.id); return a && a.tipo === "pdf" ? a.src.getPageCount() : 1; };
+  const ROWS1 = 20, ROWSN = 34;
+  const nIndice = lista.length <= ROWS1 ? 1 : 1 + Math.ceil((lista.length - ROWS1) / ROWSN);
+  const inicio = []; let pg = nIndice + 1;
+  for (const d of lista){ inicio.push(pg); pg += pagsItem(d); }
+  const totalPags = pg - 1;
+  const rodape = (p, n) => {
+    p.drawLine({start:{x:M,y:28}, end:{x:W-M,y:28}, thickness:.5, color:LINE});
+    txt(p, `Baleia Financeiro - Relatório de comprovantes - ${rotulo}`, M, 16, 7.5, F, MUT);
+    txtR(p, `Página ${n} de ${totalPags}`, W-M, 16, 7.5, F, MUT);
+  };
+
+  const ag = new Date(), geradoEm = `${pad(ag.getDate())}/${pad(ag.getMonth()+1)}/${ag.getFullYear()} ${pad(ag.getHours())}:${pad(ag.getMinutes())}`;
+  const semComp = lista.filter(d => !d.arquivo).length;
+  let p = pdf.addPage([W,H]), n = 1, y = H - M - 10;
+  txt(p, "RELATÓRIO DE COMPROVANTES", M, y, 9, FB, ACC); y -= 30;
+  txt(p, rotulo, M, y, 24, FB); y -= 20;
+  txt(p, `${cat ? "Categoria: " + catById(cat).nome + " - " : ""}Gerado em ${geradoEm}`, M, y, 9.5, F, MUT); y -= 30;
+  p.drawRectangle({x:M, y:y-58, width:W-2*M, height:62, color:BAND});
+  const col3 = (W-2*M)/3;
+  [["Despesas", String(lista.length)], ["Total", fmtValor(total)], ["Páginas", String(totalPags)]].forEach(([k,v],i) => {
+    txt(p, k.toUpperCase(), M+14+i*col3, y-18, 7.5, FB, MUT); txt(p, v, M+14+i*col3, y-42, 16, FB);
+  });
+  y -= 76;
+  if (semComp || falhas.length){
+    const partes = [];
+    if (semComp) partes.push(`${semComp} sem comprovante anexado`);
+    if (falhas.length) partes.push(`${falhas.length} comprovante(s) indisponível(is). RELATÓRIO INCOMPLETO`);
+    txt(p, "Atenção: " + partes.join(" - "), M, y, 8.5, FB, WARN); y -= 20;
+  }
+  y -= 6;
+  const cab = () => {
+    txt(p, "ÍNDICE", M, y, 9, FB, ACC); y -= 18;
+    txt(p, "Nº", M, y, 7.5, FB, MUT); txt(p, "Data", M+28, y, 7.5, FB, MUT); txt(p, "Descrição", M+92, y, 7.5, FB, MUT);
+    txt(p, "Categoria", M+300, y, 7.5, FB, MUT); txtR(p, "Valor", W-M-60, y, 7.5, FB, MUT); txtR(p, "Pág.", W-M, y, 7.5, FB, MUT);
+    y -= 6; p.drawLine({start:{x:M,y}, end:{x:W-M,y}, thickness:.6, color:LINE}); y -= 14;
+  };
+  cab();
+  lista.forEach((d,i) => {
+    const cap = n === 1 ? ROWS1 : ROWSN, naPag = n === 1 ? i : i - ROWS1 - (n-2)*ROWSN;
+    if (naPag >= cap){ rodape(p, n); p = pdf.addPage([W,H]); n++; y = H - M - 10; cab(); }
+    const marca = !d.arquivo ? " (sem comprovante)" : falhou.has(d.id) ? " (indisponível)" : "";
+    txt(p, String(i+1), M, y, 8.5, F, MUT);
+    txt(p, fmtData(d.data), M+28, y, 8.5);
+    txt(p, corta(d.descricao, F, 8.5, 200 - F.widthOfTextAtSize(marca, 8.5)) + marca, M+92, y, 8.5, F, marca ? WARN : INK);
+    txt(p, catById(d.categoria).nome, M+300, y, 8.5, F, MUT);
+    txtR(p, fmtValor(d.valorCentavos), W-M-60, y, 8.5);
+    txtR(p, String(inicio[i]), W-M, y, 8.5, F, MUT);
+    y -= 8; p.drawLine({start:{x:M,y}, end:{x:W-M,y}, thickness:.3, color:LINE}); y -= 11;
+  });
+  y -= 4; txt(p, "Total", M+300, y, 9, FB); txtR(p, fmtValor(total), W-M-60, y, 9, FB);
+  rodape(p, n);
+
+  const HEAD = 74, area = {x:M, y:44, w:W-2*M, h:H-HEAD-44-16};
+  const cabecalho = (pg2, d, i, cont) => {
+    pg2.drawRectangle({x:0, y:H-HEAD, width:W, height:HEAD, color:BAND});
+    pg2.drawLine({start:{x:0,y:H-HEAD}, end:{x:W,y:H-HEAD}, thickness:.6, color:LINE});
+    txt(pg2, `Nº ${i+1} de ${lista.length}  -  ${fmtData(d.data)}${cont ? "  -  continuação" : ""}`, M, H-26, 8.5, FB, ACC);
+    txt(pg2, corta(d.descricao, FB, 14, W-2*M-150), M, H-46, 14, FB);
+    txt(pg2, catById(d.categoria).nome + (d.arquivoNome ? "  -  " + corta(d.arquivoNome, F, 8, 280) : ""), M, H-62, 8, F, MUT);
+    txtR(pg2, fmtValor(d.valorCentavos), W-M, H-46, 15, FB);
+  };
+  const aviso = (pg2, t1, t2) => {
+    pg2.drawRectangle({x:area.x, y:area.y + area.h/2 - 50, width:area.w, height:100, borderColor:WARN, borderWidth:1, color:rgb(.984,.933,.847)});
+    txt(pg2, t1, area.x+20, area.y + area.h/2 + 14, 13, FB, WARN);
+    txt(pg2, t2, area.x+20, area.y + area.h/2 - 10, 9.5, F, INK);
+  };
+  for (let i = 0; i < lista.length; i++){
+    const d = lista[i], a = arquivos.get(d.id);
+    if (!d.arquivo || !a){
+      const pg2 = pdf.addPage([W,H]); n++; cabecalho(pg2, d, i, false);
+      if (!d.arquivo) aviso(pg2, "Sem comprovante anexado", "Esta despesa foi registrada sem o arquivo do comprovante.");
+      else aviso(pg2, "Comprovante indisponível", "O arquivo não pôde ser lido quando este relatório foi gerado.");
+      rodape(pg2, n);
+    } else if (a.tipo === "img"){
+      const pg2 = pdf.addPage([W,H]); n++; cabecalho(pg2, d, i, false);
+      try {
+        const img = a.mime === "image/png" ? await pdf.embedPng(a.buf) : await pdf.embedJpg(a.buf);
+        const k = Math.min(area.w / img.width, area.h / img.height, 1.5), w = img.width*k, h = img.height*k;
+        pg2.drawImage(img, {x: area.x + (area.w - w)/2, y: area.y + area.h - h, width:w, height:h});
+      } catch { aviso(pg2, "Imagem não pôde ser incorporada", "O arquivo desta foto está danificado."); }
+      rodape(pg2, n);
+    } else {
+      const pags = a.src.getPages();
+      for (let j = 0; j < pags.length; j++){
+        const pg2 = pdf.addPage([W,H]); n++; cabecalho(pg2, d, i, j > 0);
+        const sp = pags[j];
+        try {
+          const emb = await pdf.embedPage(sp);
+          const rot = (((sp.getRotation().angle || 0) % 360) + 360) % 360;
+          const ew = emb.width, eh = emb.height, dw = rot % 180 ? eh : ew, dh = rot % 180 ? ew : eh;
+          const k = Math.min(area.w / dw, area.h / dh), bw = dw*k, bh = dh*k, bx = area.x + (area.w - bw)/2, by = area.y + area.h - bh;
+          pg2.drawRectangle({x:bx, y:by, width:bw, height:bh, borderColor:LINE, borderWidth:.5});
+          const o = {xScale:k, yScale:k};
+          if (rot === 0) pg2.drawPage(emb, {...o, x:bx, y:by});
+          else if (rot === 90) pg2.drawPage(emb, {...o, x:bx, y:by+bh, rotate:degrees(-90)});
+          else if (rot === 180) pg2.drawPage(emb, {...o, x:bx+bw, y:by+bh, rotate:degrees(180)});
+          else pg2.drawPage(emb, {...o, x:bx+bw, y:by, rotate:degrees(90)});
+        } catch { aviso(pg2, "Página não pôde ser incorporada", `A página ${j+1} do arquivo original não pôde ser reproduzida.`); }
+        txtR(pg2, `Pág. ${j+1}/${pags.length} do comprovante`, W-M, H-62, 8, F, MUT);
+        rodape(pg2, n);
+      }
+    }
+    onProg((i+1)/lista.length);
+    await new Promise(r => setTimeout(r, 0));
+  }
+  return pdf.save();
+}
+
+/* ---------- Backup ---------- */
+const b64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1] || ""); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+function abrirBackup(){
+  const el = modal(`
+    <div class="sheet-head"><h2>Backup e ajuda</h2>${BTN_X}</div>
+    <div class="card">
+      <strong>Fazer backup</strong>
+      <span class="muted">Gera um arquivo com todas as despesas e comprovantes. Guarde no app Arquivos ou no iCloud Drive. Se você apagar o app da tela de início, os dados são apagados junto.</span>
+      <button class="btn primary" id="bk-exportar">Exportar backup</button>
+    </div>
+    <div class="card">
+      <strong>Restaurar backup</strong>
+      <span class="muted">Junta as despesas do arquivo de backup com as que já estão no app. Despesas iguais são substituídas pela versão do backup.</span>
+      <span class="btn pick">Escolher arquivo de backup<input id="bk-importar" type="file" accept=".json,application/json"></span>
+    </div>
+    <div id="bk-msg"></div>
+    <div class="card">
+      <strong>Onde ficam os dados</strong>
+      <span class="muted">Tudo fica guardado só neste aparelho, dentro do app. Nada é enviado para a internet. O app funciona sem conexão depois de instalado.</span>
+    </div>`);
+  const msg = m => el.querySelector("#bk-msg").innerHTML = m;
+  el.querySelector("#bk-exportar").onclick = async ev => {
+    const b = ev.currentTarget; b.disabled = true; b.textContent = "Preparando…";
+    try {
+      const out = { app:"baleia-financeiro", versao:1, exportadoEm:new Date().toISOString(), despesas:[] };
+      for (const d of despesas){
+        const blob = d.arquivo ? await DB.arquivo(d.arquivo).catch(() => null) : null;
+        out.despesas.push({ ...d, arquivoBase64: blob ? await b64(blob) : null });
+      }
+      const blob = new Blob([JSON.stringify(out)], {type:"application/json"});
+      b.disabled = false; b.textContent = "Exportar backup";
+      msg(`<div class="notice ok"><span>Backup pronto: ${plural(despesas.length,"despesa","despesas")}, ${fmtTam(blob.size)}.</span><button class="btn primary" id="bk-salvar">Salvar arquivo de backup</button></div>`);
+      el.querySelector("#bk-salvar").onclick = () => entregar(blob, `backup-baleia-${hojeISO()}.json`);
+    } catch { b.disabled = false; b.textContent = "Exportar backup"; msg(`<div class="notice bad">Não foi possível gerar o backup.</div>`); }
+  };
+  el.querySelector("#bk-importar").onchange = async ev => {
+    const f = ev.target.files && ev.target.files[0]; ev.target.value = ""; if (!f) return;
+    try {
+      const dados = JSON.parse(await f.text());
+      if (!dados || dados.app !== "baleia-financeiro" || !Array.isArray(dados.despesas)) throw new Error("formato");
+      let n = 0;
+      for (const x of dados.despesas){
+        if (!x || !x.id || !/^\d{4}-\d{2}-\d{2}$/.test(x.data) || !Number.isFinite(x.valorCentavos)) continue;
+        const { arquivoBase64, ...d } = x;
+        let blob = null;
+        if (arquivoBase64 && d.arquivo){
+          const bin = atob(arquivoBase64), u8 = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+          blob = new Blob([u8], {type: d.arquivoTipo || "application/octet-stream"});
+        } else if (!arquivoBase64) { d.arquivo = null; d.arquivoNome = null; d.arquivoTipo = null; d.paginas = 0; }
+        await DB.salvar(d, blob, null); n++;
+      }
+      await recarregar();
+      msg(`<div class="notice ok">${plural(n,"despesa restaurada","despesas restauradas")}.</div>`);
+    } catch { msg(`<div class="notice bad">Este arquivo não é um backup do Baleia Financeiro ou está danificado.</div>`); }
+  };
+}
+$("#btn-menu").onclick = abrirBackup;
+$("#tab-backup").onclick = abrirBackup;
+
+/* ---------- Instalação ---------- */
+const standalone = window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+const ehIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+let dicaFechada = false; try { dicaFechada = localStorage.getItem("dica-instalar") === "1"; } catch {}
+if (ehIOS && !standalone && !dicaFechada) $("#dica-instalar").hidden = false;
+$("#fechar-dica").onclick = () => { $("#dica-instalar").hidden = true; try { localStorage.setItem("dica-instalar","1"); } catch {} };
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+render();
+recarregar();
+})();
+</script>
+</body>
+</html>
